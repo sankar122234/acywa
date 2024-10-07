@@ -1,0 +1,219 @@
+<!-- Avatar and Chatbox -->
+<div id="chatbotContainer">
+  <div id="avatarWrapper" onclick="toggleChatbox()">
+    <img src="https://cdn-icons-png.flaticon.com/512/194/194938.png" alt="Chat Avatar" id="chatAvatar">
+    <div id="avatarSpeech">How may I help you today?</div>
+  </div>
+
+  <div id="chatbox" style="display:none;">
+    <div id="messages"></div>
+    <input type="text" id="userMessage" placeholder="Type your message..." onkeydown="if(event.key === 'Enter'){ sendMessage(); }" />
+    <button onclick="sendMessage()">Send</button>
+  </div>
+</div>
+
+<!-- Chatbot Styles -->
+<style>
+  /* Chatbot Avatar Container */
+  #chatbotContainer {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+  }
+
+  /* Avatar Wrapper for animation */
+  #avatarWrapper {
+    position: relative;
+    display: inline-block;
+    cursor: pointer;
+    animation: float 3s ease-in-out infinite;
+  }
+
+  /* Chatbot Avatar */
+  #chatAvatar {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    border: 2px solid #4CAF50;
+  }
+
+  /* Speech Bubble */
+  #avatarSpeech {
+    position: absolute;
+    top: -50px;
+    left: -100px;
+    background-color: #4CAF50;
+    color: white;
+    padding: 10px;
+    border-radius: 10px;
+    width: 180px;
+    text-align: center;
+    font-size: 14px;
+    display: none; /* Initially hidden */
+  }
+
+  /* Show speech bubble on hover */
+  #avatarWrapper:hover #avatarSpeech {
+    display: block;
+  }
+
+  /* Chatbox Styles */
+  #chatbox {
+    position: fixed;
+    bottom: 90px;
+    right: 20px;
+    width: 300px;
+    border: 1px solid #ccc;
+    padding: 10px;
+    background-color: #f9f9f9;
+    border-radius: 5px;
+    box-shadow: 0px 0px 10px rgba(0,0,0,0.1);
+  }
+
+  #messages {
+    height: 200px;
+    overflow-y: scroll;
+    border: 1px solid #ccc;
+    padding: 10px;
+    margin-bottom: 10px;
+    background-color: #fff;
+    border-radius: 5px;
+  }
+
+  .message {
+    margin-bottom: 10px;
+  }
+
+  /* User message bubbles */
+  .userMessage {
+    text-align: right;
+    background-color: #D1E8FF;
+    color: #000;
+    padding: 10px;
+    border-radius: 10px;
+    display: inline-block;
+    max-width: 80%;
+    word-wrap: break-word;
+  }
+
+  /* Bot message bubbles */
+  .botMessage {
+    text-align: left;
+    background-color: #E3FFC1;
+    color: #000;
+    padding: 10px;
+    border-radius: 10px;
+    display: inline-block;
+    max-width: 80%;
+    word-wrap: break-word;
+  }
+
+  #userMessage {
+    width: 80%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    margin-bottom: 10px;
+  }
+
+  button {
+    padding: 10px 15px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+
+  button:hover {
+    background-color: #45a049;
+  }
+
+  /* Floating Animation */
+  @keyframes float {
+    0%, 100% {
+      transform: translateY(0);
+    }
+    50% {
+      transform: translateY(-10px);
+    }
+  }
+</style>
+
+<!-- Chatbot Script -->
+<script>
+  // Replace this with your ngrok URL or deployed server URL
+  const API_URL = 'http://<your-ngrok-url>.ngrok.io/chat';  // Use the URL provided by ngrok
+
+  let isSendingMessage = false;
+
+  function toggleChatbox() {
+    const chatbox = document.getElementById('chatbox');
+    chatbox.style.display = (chatbox.style.display === 'none') ? 'block' : 'none';
+  }
+
+  // Function to close the chatbox if clicking outside the chatbox area
+  function closeChatboxOnOutsideClick(event) {
+    const chatbox = document.getElementById('chatbox');
+    const avatarWrapper = document.getElementById('avatarWrapper');
+
+    if (!chatbox.contains(event.target) && !avatarWrapper.contains(event.target)) {
+      chatbox.style.display = 'none';
+    }
+  }
+
+  // Add event listener to detect clicks outside the chatbox
+  document.addEventListener('click', function(event) {
+    closeChatboxOnOutsideClick(event);
+  });
+
+  async function sendMessage() {
+    const userMessageInput = document.getElementById('userMessage');
+    const userMessage = userMessageInput.value;
+
+    // Check if userMessage is empty, don't send empty messages
+    if (userMessage.trim() === '' || isSendingMessage) return;
+
+    isSendingMessage = true;
+
+    // Append user's message to the chat
+    const messages = document.getElementById('messages');
+    messages.innerHTML += `<div class="message userMessage"><strong>You:</strong> ${userMessage}</div>`;
+
+    // Clear input field immediately after sending
+    userMessageInput.value = '';
+
+    // Scroll to the bottom of the messages div
+    messages.scrollTop = messages.scrollHeight;
+
+    try {
+      // Send the user message to Flask API
+      const response = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: userMessage }),
+      });
+
+      const data = await response.json();
+
+      // Append bot's response to the chat
+      messages.innerHTML += `<div class="message botMessage"><strong>Bot:</strong> ${data.reply}</div>`;
+    } catch (error) {
+      // Handle any errors from the API
+      messages.innerHTML += `<div class="message botMessage"><strong>Bot:</strong> Oops! Something went wrong.</div>`;
+    }
+
+    // Scroll to the bottom of the messages div again
+    messages.scrollTop = messages.scrollHeight;
+    
+    isSendingMessage = false;
+  }
+
+  // Stop propagation when clicking inside the chatbox or avatar so that the chatbox doesn't close
+  document.getElementById('avatarWrapper').addEventListener('click', function(event) {
+    event.stopPropagation();
+  });
+  document.getElementById('chatbox').addEventListener('click', function(event) {
+    event.stopPropagation();
+  });
+</script>
